@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+
+  --color-status-identical: oklch(0.765 0.177 163);
+  --color-status-different: oklch(0.828 0.189 84);
+  --color-status-left-only: oklch(0.707 0.165 254);
+  --color-status-right-only: oklch(0.714 0.169 293);
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-700 font-sans antialiased;
+}
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}

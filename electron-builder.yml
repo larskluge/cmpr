@@ -1,0 +1,12 @@
+appId: com.cmpr.app
+productName: cmpr
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
