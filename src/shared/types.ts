@@ -5,7 +5,7 @@ export interface FileEntry {
   sizeBytes: number
 }
 
-export type FileStatus = 'identical' | 'different' | 'left-only' | 'right-only' | 'ignored'
+export type FileStatus = 'identical' | 'different' | 'left-only' | 'right-only' | 'moved' | 'ignored'
 
 export const IGNORED_PATTERNS = [
   '.DS_Store',
@@ -35,6 +35,7 @@ export interface ComparisonSummary {
   different: number
   leftOnly: number
   rightOnly: number
+  moved: number
   ignored: number
   directoriesIdentical: boolean
   sameContentDifferentStructure: boolean

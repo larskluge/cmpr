@@ -33,9 +33,11 @@ export function ComparisonTable() {
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-100 text-[10px] text-neutral-400 font-medium uppercase tracking-wider shrink-0">
           <div className="flex-1">Left</div>
-          <div className="w-16 text-right">Size</div>
+          <div className="w-14 text-right">SHA</div>
+          <div className="w-14 text-right">Size</div>
           <div className="w-20 text-center">Status</div>
-          <div className="w-16">Size</div>
+          <div className="w-14">Size</div>
+          <div className="w-14">SHA</div>
           <div className="flex-1 text-right">Right</div>
         </div>
 

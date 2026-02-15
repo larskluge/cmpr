@@ -7,84 +7,154 @@ export function compare(
   leftEntries: FileEntry[],
   rightEntries: FileEntry[]
 ): ComparisonResult {
-  const leftMap = new Map<string, FileEntry>()
-  const rightMap = new Map<string, FileEntry>()
-
-  for (const e of leftEntries) leftMap.set(e.relativePath, e)
-  for (const e of rightEntries) rightMap.set(e.relativePath, e)
-
-  const allPaths = new Set([...leftMap.keys(), ...rightMap.keys()])
   const entries: ComparisonEntry[] = []
 
-  for (const path of [...allPaths].sort()) {
-    const left = leftMap.get(path)
-    const right = rightMap.get(path)
+  // Separate ignored files
+  const leftIgnored: FileEntry[] = []
+  const rightIgnored: FileEntry[] = []
+  const leftFiles: FileEntry[] = []
+  const rightFiles: FileEntry[] = []
 
-    if (isIgnoredFile(path)) {
-      entries.push({ relativePath: path, status: 'ignored', left, right })
-      continue
+  for (const e of leftEntries) {
+    if (isIgnoredFile(e.relativePath)) leftIgnored.push(e)
+    else leftFiles.push(e)
+  }
+  for (const e of rightEntries) {
+    if (isIgnoredFile(e.relativePath)) rightIgnored.push(e)
+    else rightFiles.push(e)
+  }
+
+  // Emit ignored entries
+  const allIgnoredPaths = new Set([
+    ...leftIgnored.map(e => e.relativePath),
+    ...rightIgnored.map(e => e.relativePath)
+  ])
+  const leftIgnoredMap = new Map(leftIgnored.map(e => [e.relativePath, e]))
+  const rightIgnoredMap = new Map(rightIgnored.map(e => [e.relativePath, e]))
+  for (const path of [...allIgnoredPaths].sort()) {
+    entries.push({
+      relativePath: path,
+      status: 'ignored',
+      left: leftIgnoredMap.get(path),
+      right: rightIgnoredMap.get(path)
+    })
+  }
+
+  // Group non-ignored files by SHA
+  const leftBySha = new Map<string, FileEntry[]>()
+  const rightBySha = new Map<string, FileEntry[]>()
+  for (const e of leftFiles) {
+    const list = leftBySha.get(e.sha256) || []
+    list.push(e)
+    leftBySha.set(e.sha256, list)
+  }
+  for (const e of rightFiles) {
+    const list = rightBySha.get(e.sha256) || []
+    list.push(e)
+    rightBySha.set(e.sha256, list)
+  }
+
+  // Track which files have been matched
+  const matchedLeft = new Set<string>()   // relativePaths
+  const matchedRight = new Set<string>()  // relativePaths
+
+  // For each SHA present on both sides, match files
+  for (const [sha, leftList] of leftBySha) {
+    const rightList = rightBySha.get(sha)
+    if (!rightList) continue
+
+    // First pass: match files that share the same path (identical)
+    const leftByPath = new Map(leftList.map(e => [e.relativePath, e]))
+    const rightByPath = new Map(rightList.map(e => [e.relativePath, e]))
+
+    for (const [path, leftEntry] of leftByPath) {
+      if (rightByPath.has(path)) {
+        entries.push({
+          relativePath: path,
+          status: 'identical',
+          left: leftEntry,
+          right: rightByPath.get(path)
+        })
+        matchedLeft.add(path)
+        matchedRight.add(path)
+      }
     }
 
-    if (left && right) {
+    // Second pass: pair remaining unmatched files with same SHA (moved)
+    const unmatchedLeft = leftList.filter(e => !matchedLeft.has(e.relativePath))
+    const unmatchedRight = rightList.filter(e => !matchedRight.has(e.relativePath))
+
+    const pairCount = Math.min(unmatchedLeft.length, unmatchedRight.length)
+    for (let i = 0; i < pairCount; i++) {
       entries.push({
-        relativePath: path,
-        status: left.sha256 === right.sha256 ? 'identical' : 'different',
-        left,
-        right
+        relativePath: unmatchedLeft[i].relativePath,
+        status: 'moved',
+        left: unmatchedLeft[i],
+        right: unmatchedRight[i]
       })
-    } else if (left) {
-      entries.push({ relativePath: path, status: 'left-only', left })
-    } else {
-      entries.push({ relativePath: path, status: 'right-only', right })
+      matchedLeft.add(unmatchedLeft[i].relativePath)
+      matchedRight.add(unmatchedRight[i].relativePath)
     }
   }
 
-  const summary = computeSummary(entries, leftEntries, rightEntries)
+  // Remaining unmatched files: check if same path exists on opposite side → 'different'
+  const unmatchedLeftFiles = leftFiles.filter(e => !matchedLeft.has(e.relativePath))
+  const unmatchedRightFiles = rightFiles.filter(e => !matchedRight.has(e.relativePath))
+
+  const unmatchedLeftByPath = new Map(unmatchedLeftFiles.map(e => [e.relativePath, e]))
+  const unmatchedRightByPath = new Map(unmatchedRightFiles.map(e => [e.relativePath, e]))
+
+  for (const [path, leftEntry] of unmatchedLeftByPath) {
+    if (unmatchedRightByPath.has(path)) {
+      entries.push({
+        relativePath: path,
+        status: 'different',
+        left: leftEntry,
+        right: unmatchedRightByPath.get(path)
+      })
+      matchedLeft.add(path)
+      matchedRight.add(path)
+    }
+  }
+
+  // Truly unmatched: left-only and right-only
+  for (const e of leftFiles) {
+    if (!matchedLeft.has(e.relativePath)) {
+      entries.push({ relativePath: e.relativePath, status: 'left-only', left: e })
+    }
+  }
+  for (const e of rightFiles) {
+    if (!matchedRight.has(e.relativePath)) {
+      entries.push({ relativePath: e.relativePath, status: 'right-only', right: e })
+    }
+  }
+
+  // Sort entries by relativePath for consistent display
+  entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath))
+
+  const summary = computeSummary(entries)
 
   return { leftRoot, rightRoot, entries, summary }
 }
 
-function computeSummary(
-  entries: ComparisonEntry[],
-  leftEntries: FileEntry[],
-  rightEntries: FileEntry[]
-): ComparisonSummary {
-  const counts = { identical: 0, different: 0, leftOnly: 0, rightOnly: 0, ignored: 0 }
+function computeSummary(entries: ComparisonEntry[]): ComparisonSummary {
+  const counts = { identical: 0, different: 0, leftOnly: 0, rightOnly: 0, moved: 0, ignored: 0 }
   for (const e of entries) {
     if (e.status === 'identical') counts.identical++
     else if (e.status === 'different') counts.different++
     else if (e.status === 'left-only') counts.leftOnly++
     else if (e.status === 'right-only') counts.rightOnly++
+    else if (e.status === 'moved') counts.moved++
     else if (e.status === 'ignored') counts.ignored++
   }
 
   const nonIgnored = entries.filter(e => e.status !== 'ignored')
 
-  // Check if same content exists but in different paths
-  const leftHashes = new Map<string, number>()
-  const rightHashes = new Map<string, number>()
-  for (const e of leftEntries) {
-    if (!isIgnoredFile(e.relativePath)) {
-      leftHashes.set(e.sha256, (leftHashes.get(e.sha256) || 0) + 1)
-    }
-  }
-  for (const e of rightEntries) {
-    if (!isIgnoredFile(e.relativePath)) {
-      rightHashes.set(e.sha256, (rightHashes.get(e.sha256) || 0) + 1)
-    }
-  }
-
-  let sameContentDifferentStructure = false
-  if (leftHashes.size === rightHashes.size && leftHashes.size > 0) {
-    sameContentDifferentStructure = [...leftHashes.entries()].every(
-      ([hash, count]) => rightHashes.get(hash) === count
-    ) && counts.identical !== nonIgnored.length
-  }
-
   return {
     ...counts,
     directoriesIdentical: counts.identical === nonIgnored.length && nonIgnored.length > 0,
-    sameContentDifferentStructure,
+    sameContentDifferentStructure: counts.different === 0 && counts.leftOnly === 0 && counts.rightOnly === 0
+      && counts.moved > 0 && nonIgnored.length > 0,
     allFilesExistBothSides: counts.leftOnly === 0 && counts.rightOnly === 0
   }
 }

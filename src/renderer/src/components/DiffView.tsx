@@ -86,7 +86,11 @@ export function DiffView({ entry, onClose }: Props) {
       <div className="bg-white rounded-2xl shadow-xl flex flex-col max-w-5xl w-full mx-6 max-h-[85vh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 shrink-0">
-          <span className="text-sm font-medium text-neutral-700 font-mono truncate">{entry.relativePath}</span>
+          <span className="text-sm font-medium text-neutral-700 font-mono truncate">
+            {entry.status === 'moved'
+              ? `${entry.left?.relativePath} → ${entry.right?.relativePath}`
+              : entry.relativePath}
+          </span>
           <button
             onClick={onClose}
             className="ml-4 px-3 py-1 text-xs text-neutral-500 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-all duration-200 cursor-pointer shrink-0"
@@ -101,6 +105,8 @@ export function DiffView({ entry, onClose }: Props) {
             <div className="flex items-center justify-center h-48 text-sm text-neutral-400">Loading...</div>
           ) : isBinary ? (
             <div className="flex items-center justify-center h-48 text-sm text-neutral-400">Binary or unreadable file</div>
+          ) : entry.status === 'moved' ? (
+            <pre className="p-4 text-xs font-mono text-neutral-600 whitespace-pre-wrap">{leftContent ?? rightContent}</pre>
           ) : entry.status === 'left-only' ? (
             <pre className="p-4 text-xs font-mono text-neutral-600 whitespace-pre-wrap">{leftContent}</pre>
           ) : entry.status === 'right-only' ? (

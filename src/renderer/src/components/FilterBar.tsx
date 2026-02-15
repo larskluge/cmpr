@@ -6,6 +6,7 @@ const filters: { key: FilterType; label: string; color: string }[] = [
   { key: 'different', label: 'Different', color: 'bg-amber-400' },
   { key: 'left-only', label: 'Left Only', color: 'bg-blue-400' },
   { key: 'right-only', label: 'Right Only', color: 'bg-violet-400' },
+  { key: 'moved', label: 'Moved', color: 'bg-cyan-400' },
   { key: 'ignored', label: 'Ignored', color: 'bg-neutral-400' }
 ]
 
@@ -23,7 +24,7 @@ export function FilterBar() {
     <div className="mx-6 mb-4 flex gap-2">
       {filters.map(({ key, label, color }) => {
         const count = getCount(key)
-        if (key === 'ignored' && count === 0) return null
+        if ((key === 'ignored' || key === 'moved') && count === 0) return null
         const active = activeFilter === key
         return (
           <button

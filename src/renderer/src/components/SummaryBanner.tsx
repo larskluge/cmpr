@@ -36,6 +36,9 @@ export function SummaryBanner() {
         {summary.rightOnly > 0 && (
           <span><span className="inline-block w-2 h-2 rounded-full bg-violet-400 mr-1" />{summary.rightOnly} right only</span>
         )}
+        {summary.moved > 0 && (
+          <span><span className="inline-block w-2 h-2 rounded-full bg-cyan-400 mr-1" />{summary.moved} moved</span>
+        )}
       </div>
     </div>
   )
