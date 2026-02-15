@@ -95,6 +95,33 @@ export function compare(
       matchedLeft.add(unmatchedLeft[i].relativePath)
       matchedRight.add(unmatchedRight[i].relativePath)
     }
+
+    // Third pass: excess duplicates — same SHA exists on the other side but all
+    // counterparts are already paired. Still mark as 'moved' so the UI shows the
+    // content exists on both sides (many-to-one pairing).
+    if (unmatchedLeft.length > pairCount) {
+      const counterpart = unmatchedRight[0] || rightList[0]
+      for (let i = pairCount; i < unmatchedLeft.length; i++) {
+        entries.push({
+          relativePath: unmatchedLeft[i].relativePath,
+          status: 'moved',
+          left: unmatchedLeft[i],
+          right: counterpart
+        })
+        matchedLeft.add(unmatchedLeft[i].relativePath)
+      }
+    } else if (unmatchedRight.length > pairCount) {
+      const counterpart = unmatchedLeft[0] || leftList[0]
+      for (let i = pairCount; i < unmatchedRight.length; i++) {
+        entries.push({
+          relativePath: unmatchedRight[i].relativePath,
+          status: 'moved',
+          left: counterpart,
+          right: unmatchedRight[i]
+        })
+        matchedRight.add(unmatchedRight[i].relativePath)
+      }
+    }
   }
 
   // Remaining unmatched files: check if same path exists on opposite side → 'different'

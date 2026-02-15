@@ -11,6 +11,7 @@ export function ActionBar() {
 
   const hasLeft = selectedEntries.some(e => e.left)
   const hasRight = selectedEntries.some(e => e.right)
+  const hasAny = hasLeft || hasRight
 
   async function performAction(direction: 'left-to-right' | 'right-to-left', mode: 'copy' | 'move') {
     if (!result) return
@@ -25,6 +26,27 @@ export function ActionBar() {
         }
       } catch (err: any) {
         setError(`Failed to ${mode} ${entry.relativePath}: ${err.message}`)
+        return
+      }
+    }
+
+    clearSelection()
+    const newResult = await window.api.compareDirectories(result.leftRoot, result.rightRoot)
+    useStore.getState().setResult(newResult)
+  }
+
+  async function trashSelected() {
+    if (!result) return
+    const fileCount = selectedEntries.reduce((n, e) => n + (e.left ? 1 : 0) + (e.right ? 1 : 0), 0)
+    const confirmed = window.confirm(`Move ${fileCount} file${fileCount === 1 ? '' : 's'} to Trash?`)
+    if (!confirmed) return
+
+    for (const entry of selectedEntries) {
+      try {
+        if (entry.left) await window.api.trashFile(entry.left.absolutePath)
+        if (entry.right) await window.api.trashFile(entry.right.absolutePath)
+      } catch (err: any) {
+        setError(`Failed to trash ${entry.relativePath}: ${err.message}`)
         return
       }
     }
@@ -81,6 +103,14 @@ export function ActionBar() {
         className={`${btnBase} text-violet-600 bg-violet-50 ${hasRight ? 'hover:bg-violet-100 ' + btnEnabled : btnDisabled}`}
       >
         &larr; Move
+      </button>
+      <div className="w-px h-4 bg-neutral-200" />
+      <button
+        onClick={trashSelected}
+        disabled={!hasAny}
+        className={`${btnBase} text-red-600 bg-red-50 ${hasAny ? 'hover:bg-red-100 ' + btnEnabled : btnDisabled}`}
+      >
+        Trash
       </button>
     </div>
   )

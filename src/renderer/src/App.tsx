@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useStore } from './store'
-import { DirectoryPicker } from './components/DirectoryPicker'
+import { FolderPicker } from './components/FolderPicker'
+import { ResultHeader } from './components/ResultHeader'
 import { SummaryBanner } from './components/SummaryBanner'
 import { FilterBar } from './components/FilterBar'
 import { ComparisonTable } from './components/ComparisonTable'
@@ -48,6 +49,8 @@ export default function App() {
     e.stopPropagation()
     setDragOver(false)
 
+    if (result) return
+
     const files = Array.from(e.dataTransfer.files)
     const paths = files.map(f => window.api.getPathForFile(f)).filter(Boolean)
 
@@ -63,7 +66,7 @@ export default function App() {
       if (!leftPath) setLeftPath(paths[0])
       else setRightPath(paths[0])
     }
-  }, [leftPath, rightPath, setLeftPath, setRightPath])
+  }, [leftPath, rightPath, setLeftPath, setRightPath, result])
 
   return (
     <div
@@ -75,19 +78,19 @@ export default function App() {
       {/* Titlebar drag region */}
       <div className="titlebar-drag h-12 shrink-0 absolute top-0 left-0 right-0" />
 
-      <div className="pt-12 px-6 pb-4 shrink-0">
-        <DirectoryPicker />
-      </div>
-
-      {error && (
-        <div className="mx-6 mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm shrink-0">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">dismiss</button>
-        </div>
-      )}
-
-      {result && (
+      {result ? (
         <>
+          <div className="pt-12 px-6 pb-4 shrink-0">
+            <ResultHeader />
+          </div>
+
+          {error && (
+            <div className="mx-6 mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm shrink-0">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 underline">dismiss</button>
+            </div>
+          )}
+
           <SummaryBanner />
           <FilterBar />
           <ActionBar />
@@ -95,14 +98,19 @@ export default function App() {
             <ComparisonTable />
           </div>
         </>
-      )}
+      ) : (
+        <>
+          {error && (
+            <div className="mx-6 mt-12 mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm shrink-0">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 underline">dismiss</button>
+            </div>
+          )}
 
-      {!result && !scanning && (
-        <div className={`flex-1 flex items-center justify-center transition-all duration-200 ${dragOver ? 'bg-neutral-100' : ''}`}>
-          <p className="text-sm text-neutral-400">
-            {dragOver ? 'Drop folders here' : 'Select or drop two directories to compare'}
-          </p>
-        </div>
+          <div className={`flex-1 pt-12 flex transition-all duration-200 ${dragOver ? 'bg-neutral-100' : ''}`}>
+            {!scanning && <FolderPicker />}
+          </div>
+        </>
       )}
 
       {scanning && <ProgressOverlay />}

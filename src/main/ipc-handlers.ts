@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
 import { Worker } from 'worker_threads'
 import { join } from 'path'
 import { IPC } from '../shared/ipc-channels'
@@ -58,6 +58,14 @@ export function registerIpcHandlers(): void {
     const { readFile } = await import('fs/promises')
     const content = await readFile(filePath, 'utf-8')
     return content
+  })
+
+  ipcMain.handle(IPC.TRASH_FILE, async (_event, filePath: string) => {
+    await shell.trashItem(filePath)
+  })
+
+  ipcMain.handle(IPC.SHOW_IN_FOLDER, (_event, filePath: string) => {
+    shell.showItemInFolder(filePath)
   })
 
   ipcMain.handle(IPC.GET_CLI_ARGS, () => {

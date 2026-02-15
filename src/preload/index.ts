@@ -23,6 +23,12 @@ const api = {
   readFile: (filePath: string): Promise<string> =>
     ipcRenderer.invoke(IPC.READ_FILE, filePath),
 
+  trashFile: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.TRASH_FILE, filePath),
+
+  showInFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.SHOW_IN_FOLDER, filePath),
+
   onScanProgress: (callback: (progress: ScanProgress) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => callback(progress)
     ipcRenderer.on(IPC.SCAN_PROGRESS, handler)

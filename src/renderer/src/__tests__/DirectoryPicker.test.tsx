@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { DirectoryPicker } from '../components/DirectoryPicker'
+import { FolderPicker } from '../components/FolderPicker'
 import { useStore } from '../store'
 import App from '../App'
 
@@ -20,57 +20,57 @@ function createDropEvent(paths: string[]) {
   return { dataTransfer }
 }
 
-describe('DirectoryPicker', () => {
+describe('FolderPicker', () => {
   beforeEach(() => {
     useStore.setState({ leftPath: '', rightPath: '', result: null, error: null })
   })
 
-  it('renders left and right inputs', () => {
-    render(<DirectoryPicker />)
-    expect(screen.getByText('Left Directory')).toBeInTheDocument()
-    expect(screen.getByText('Right Directory')).toBeInTheDocument()
+  it('renders two folder slots', () => {
+    render(<FolderPicker />)
+    expect(screen.getByText('Left')).toBeInTheDocument()
+    expect(screen.getByText('Right')).toBeInTheDocument()
   })
 
-  it('sets left path on drop to left input area', () => {
-    render(<DirectoryPicker />)
-    const leftLabel = screen.getByText('Left Directory')
-    const leftArea = leftLabel.closest('div')!
+  it('shows placeholder when no path set', () => {
+    render(<FolderPicker />)
+    const placeholders = screen.getAllByText('Drop or click to select')
+    expect(placeholders).toHaveLength(2)
+  })
 
-    fireEvent.drop(leftArea, createDropEvent(['/Users/test/folder-a']))
+  it('shows folder name when path is set', () => {
+    useStore.setState({ leftPath: '/Users/test/my-folder' })
+    render(<FolderPicker />)
+    expect(screen.getByText('my-folder')).toBeInTheDocument()
+  })
+
+  it('shows Compare button when both paths set', () => {
+    useStore.setState({ leftPath: '/a', rightPath: '/b' })
+    render(<FolderPicker />)
+    expect(screen.getByText('Compare')).toBeInTheDocument()
+  })
+
+  it('does not show Compare button when only one path set', () => {
+    useStore.setState({ leftPath: '/a', rightPath: '' })
+    render(<FolderPicker />)
+    expect(screen.queryByText('Compare')).not.toBeInTheDocument()
+  })
+
+  it('sets left path on drop to left slot', () => {
+    render(<FolderPicker />)
+    const leftSlot = screen.getByText('Left').closest('div[class*="flex-1"]')!
+
+    fireEvent.drop(leftSlot, createDropEvent(['/Users/test/folder-a']))
 
     expect(useStore.getState().leftPath).toBe('/Users/test/folder-a')
   })
 
-  it('sets right path on drop to right input area', () => {
-    render(<DirectoryPicker />)
-    const rightLabel = screen.getByText('Right Directory')
-    const rightArea = rightLabel.closest('div')!
+  it('sets right path on drop to right slot', () => {
+    render(<FolderPicker />)
+    const rightSlot = screen.getByText('Right').closest('div[class*="flex-1"]')!
 
-    fireEvent.drop(rightArea, createDropEvent(['/Users/test/folder-b']))
+    fireEvent.drop(rightSlot, createDropEvent(['/Users/test/folder-b']))
 
     expect(useStore.getState().rightPath).toBe('/Users/test/folder-b')
-  })
-
-  it('does not cross-contaminate paths on drop', () => {
-    render(<DirectoryPicker />)
-    const leftLabel = screen.getByText('Left Directory')
-    const leftArea = leftLabel.closest('div')!
-
-    fireEvent.drop(leftArea, createDropEvent(['/Users/test/folder-a']))
-
-    expect(useStore.getState().leftPath).toBe('/Users/test/folder-a')
-    expect(useStore.getState().rightPath).toBe('')
-  })
-
-  it('drop on input element inside left area sets left path', () => {
-    render(<DirectoryPicker />)
-    const inputs = screen.getAllByPlaceholderText('Drop folder or type path')
-    const leftInput = inputs[0]
-
-    fireEvent.drop(leftInput, createDropEvent(['/Users/test/from-input']))
-
-    // The drop should bubble to the parent handler and set the path
-    expect(useStore.getState().leftPath).toBe('/Users/test/from-input')
   })
 })
 

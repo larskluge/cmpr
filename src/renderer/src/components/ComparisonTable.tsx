@@ -1,16 +1,50 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useStore, getFilteredEntries } from '../store'
 import { FileRow } from './FileRow'
 import { DiffView } from './DiffView'
+import { ContextMenu } from './ContextMenu'
 import type { ComparisonEntry } from '../../../shared/types'
+
+interface ContextMenuState {
+  x: number
+  y: number
+  entry: ComparisonEntry
+  side: 'left' | 'right'
+}
 
 export function ComparisonTable() {
   const parentRef = useRef<HTMLDivElement>(null)
-  const { selectedPaths, toggleSelected, result, activeFilter } = useStore()
+  const { selectedPaths, selectOnly, addToSelection, rangeSelect, selectAll, result, activeFilter, clearSelection, setError } = useStore()
   const [diffEntry, setDiffEntry] = useState<ComparisonEntry | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null)
 
   const entries = getFilteredEntries({ result, activeFilter })
+
+  const handleRowClick = useCallback((path: string, e: React.MouseEvent) => {
+    if (e.shiftKey) {
+      rangeSelect(path)
+    } else if (e.metaKey || e.ctrlKey) {
+      addToSelection(path)
+    } else {
+      selectOnly(path)
+    }
+  }, [selectOnly, addToSelection, rangeSelect])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, entry: ComparisonEntry, side: 'left' | 'right') => {
+    setCtxMenu({ x: e.clientX, y: e.clientY, entry, side })
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault()
+        selectAll()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectAll])
 
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -18,6 +52,34 @@ export function ComparisonTable() {
     estimateSize: () => 36,
     overscan: 20
   })
+
+  function getContextMenuItems() {
+    if (!ctxMenu || !result) return []
+    const { entry, side } = ctxMenu
+    const file = side === 'left' ? entry.left : entry.right
+    if (!file) return []
+
+    return [
+      {
+        label: 'Show in Finder',
+        onClick: () => window.api.showInFolder(file.absolutePath)
+      },
+      {
+        label: 'Move to Trash',
+        destructive: true,
+        onClick: async () => {
+          try {
+            await window.api.trashFile(file.absolutePath)
+            clearSelection()
+            const newResult = await window.api.compareDirectories(result.leftRoot, result.rightRoot)
+            useStore.getState().setResult(newResult)
+          } catch (err: any) {
+            setError(`Failed to trash ${file.relativePath}: ${err.message}`)
+          }
+        }
+      }
+    ]
+  }
 
   if (entries.length === 0) {
     return (
@@ -61,8 +123,9 @@ export function ComparisonTable() {
                   <FileRow
                     entry={entry}
                     selected={selectedPaths.has(entry.relativePath)}
-                    onToggle={() => toggleSelected(entry.relativePath)}
+                    onClick={(e) => handleRowClick(entry.relativePath, e)}
                     onDoubleClick={() => setDiffEntry(entry)}
+                    onContextMenu={(e, side) => handleContextMenu(e, entry, side)}
                   />
                 </div>
               )
@@ -73,6 +136,15 @@ export function ComparisonTable() {
 
       {diffEntry && (
         <DiffView entry={diffEntry} onClose={() => setDiffEntry(null)} />
+      )}
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={getContextMenuItems()}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </>
   )

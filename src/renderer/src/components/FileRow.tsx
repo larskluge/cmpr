@@ -5,8 +5,9 @@ import { middleTruncate } from '../utils/middle-truncate'
 interface Props {
   entry: ComparisonEntry
   selected: boolean
-  onToggle: () => void
+  onClick: (e: React.MouseEvent) => void
   onDoubleClick: () => void
+  onContextMenu: (e: React.MouseEvent, side: 'left' | 'right') => void
 }
 
 const statusStyles: Record<string, string> = {
@@ -82,17 +83,20 @@ function TruncatedPath({ path }: { path: string }) {
   )
 }
 
-export function FileRow({ entry, selected, onToggle, onDoubleClick }: Props) {
+export function FileRow({ entry, selected, onClick, onDoubleClick, onContextMenu }: Props) {
   return (
     <div
       className={`flex items-center gap-2 px-3 py-1.5 transition-all duration-200 cursor-pointer select-none ${
         selected ? 'bg-neutral-100' : 'hover:bg-neutral-50'
       }`}
-      onClick={onToggle}
+      onClick={onClick}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick() }}
     >
-      {/* Left path */}
-      <div className="flex-1 min-w-0 text-xs font-mono overflow-hidden">
+      {/* Left side */}
+      <div
+        className="flex-1 min-w-0 text-xs font-mono overflow-hidden"
+        onContextMenu={(e) => { if (entry.left) { e.preventDefault(); e.stopPropagation(); onContextMenu(e, 'left') } }}
+      >
         {entry.left ? (
           <TruncatedPath path={entry.left.relativePath} />
         ) : (
@@ -126,8 +130,11 @@ export function FileRow({ entry, selected, onToggle, onDoubleClick }: Props) {
         {entry.right ? abbrSha(entry.right.sha256) : ''}
       </div>
 
-      {/* Right path */}
-      <div className="flex-1 min-w-0 text-xs font-mono overflow-hidden">
+      {/* Right side */}
+      <div
+        className="flex-1 min-w-0 text-xs font-mono overflow-hidden"
+        onContextMenu={(e) => { if (entry.right) { e.preventDefault(); e.stopPropagation(); onContextMenu(e, 'right') } }}
+      >
         {entry.right ? (
           <TruncatedPath path={entry.right.relativePath} />
         ) : (

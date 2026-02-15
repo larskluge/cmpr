@@ -18,6 +18,8 @@ globalThis.ResizeObserver = class {
     moveFile: vi.fn(),
     getCliArgs: vi.fn().mockResolvedValue([]),
     readFile: vi.fn(),
+    trashFile: vi.fn(),
+    showInFolder: vi.fn(),
     onScanProgress: vi.fn().mockReturnValue(() => {}),
     getPathForFile: vi.fn((file: File) => (file as any)._testPath || '')
   }
