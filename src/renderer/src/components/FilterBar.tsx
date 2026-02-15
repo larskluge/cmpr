@@ -3,10 +3,10 @@ import { useStore, type FilterType } from '../store'
 const filters: { key: FilterType; label: string; color: string }[] = [
   { key: 'all', label: 'All', color: 'bg-neutral-200' },
   { key: 'identical', label: 'Identical', color: 'bg-emerald-400' },
+  { key: 'moved', label: 'Moved', color: 'bg-cyan-400' },
   { key: 'different', label: 'Different', color: 'bg-amber-400' },
   { key: 'left-only', label: 'Left Only', color: 'bg-blue-400' },
   { key: 'right-only', label: 'Right Only', color: 'bg-violet-400' },
-  { key: 'moved', label: 'Moved', color: 'bg-cyan-400' },
   { key: 'ignored', label: 'Ignored', color: 'bg-neutral-400' }
 ]
 

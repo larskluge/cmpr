@@ -1,6 +1,13 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
+// Mock ResizeObserver for jsdom
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as any
+
 // Mock window.api
 ;(globalThis as any).window = {
   ...globalThis.window,
